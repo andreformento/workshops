@@ -23,6 +23,13 @@ nodeSelector: {}
 
 nextService: ""
 
+greenAppVersion: ""
+greenPercentage: 0
+
+enableGateway: false
+enableCircuitBreaker: false
+enablePathOverride: false
+
 serviceDelayValue: 7000
 
 

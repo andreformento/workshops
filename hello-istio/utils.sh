@@ -2,31 +2,28 @@
 
 total_number_services=5
 
-function yaml() {
-    rm -rf controversial-helm-usage.yaml
-    touch controversial-helm-usage.yaml
-    
+function install() {
+    rm -rf helm-generated.yaml
+    touch helm-generated.yaml
+
     cd kube
 
     for ((i=1;i<=$total_number_services;i++)) do
     if (($i == 1)); then
-        # helm -n istio-dev upgrade hello-istio${i} ${pwd}/helm -f values-dev.yaml --install
-        helm -n istio-dev template hello-istio${i} . -f values-dev.yaml >> ../controversial-helm-usage.yaml    
-        # please don't judge me!
-        mv templates/gateway.yaml ../
+        # helm -n istio-dev template hello-istio${i} . -f values-dev.yaml --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} >> ../helm-generated.yaml
+        helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --install --atomic
     else
         service_number=$((${i}-1))
         # helm -n istio-dev upgrade hello-istio${i} ${PWD}/helm --set nextService=hello-istio${service_number} -f values-dev.yaml --install
-        helm -n istio-dev template hello-istio${i} . --set nextService=hello-istio${service_number} -f values-dev.yaml >> ../controversial-helm-usage.yaml
+        if (($i == $total_number_services)); then
+            # helm -n istio-dev template hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableGateway=true >> ../helm-generated.yaml
+            helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableGateway=true  --install --atomic
+        else
+            # helm -n istio-dev template hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} >> ../helm-generated.yaml
+            helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i}  --install --atomic
+        fi
     fi
     done
-    # I know... I'm not proud!
-    mv ../gateway.yaml templates/
-    # Descomentar hosts do último virtual service
-}
-
-function installYaml() {
-    kubectl -n istio-dev apply -f controversial-helm-usage.yaml
 }
 
 function callIngress() {
@@ -34,7 +31,7 @@ function callIngress() {
 }
 
 function callIngressChain() {
-    curl -i http://localhost:7000/chain -H "Host: hello-istio-public.aws.my-company.io"
+    watch -n1 'curl http://localhost:7000/chain -H "Host: hello-istio-public.aws.my-company.io" | json_pp'
 }
 
 function callIngressChainBulk() {
@@ -47,13 +44,19 @@ function callDelay() {
 
 function deleteResources() {
     for ((i=1;i<=$total_number_services;i++)) do
-        kubectl -n istio-dev delete svc hello-istio${i}
-        kubectl -n istio-dev delete deploy hello-istio${i}
-        kubectl -n istio-dev delete virtualservice hello-istio${i}
-        kubectl -n istio-dev delete destinationrule hello-istio${i}
+        helm -n istio-dev delete hello-istio${i} 
     done
-    kubectl -n istio-dev delete gateway hello-istio-gateway
-    rm -rf controversial-helm-usage.yaml
+}
+
+function enableGreen() {
+    cd kube
+
+    chosen_app=${1}
+    green_version=${2}
+    green_percentage=${3}
+    service_number=$((${chosen_app}-1))
+    helm -n istio-dev upgrade hello-istio${chosen_app} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${chosen_app} --set fullnameOverride=hello-istio${chosen_app} --set greenAppVersion=${green_version} --set greenPercentage=${green_percentage}  --install --atomic
+    # helm -n istio-dev template hello-istio${chosen_app} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${chosen_app} --set fullnameOverride=hello-istio${chosen_app} --set greenAppVersion=${green_version} --set greenPercentage=${green_percentage} --debug >> ../bla.yaml 
 }
 
 function portForwardSVC() {
@@ -74,11 +77,8 @@ function openKiali() {
 }
 
 case "$1" in
-	"yaml")
-		yaml
-		;;
     "install")
-		installYaml
+		install
 		;;
 	"clean")
 		deleteResources
@@ -86,6 +86,9 @@ case "$1" in
     "pf")
 		portForwardSVC $2
 		;;
+    "enableGreen")
+        enableGreen $2 $3 $4
+        ;;
     "pfIngress")
 		portForwardIngress
 		;;
@@ -108,7 +111,7 @@ case "$1" in
 		callIngressChainBulk
 		;;
 	*)
-		error "Usage: $0 clean|yaml|install|pf|pfIngress|call|callDelay|callChain|callChainBulk|kiali|jaeger"
+		error "Usage: $0 clean|install|pf|pfIngress|call|callDelay|callChain|callChainBulk|enableGreen|kiali|jaeger"
 		exit 1
 		;;
 esac

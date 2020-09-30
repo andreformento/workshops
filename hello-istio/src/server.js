@@ -8,7 +8,7 @@ let delay = false;
 let nextService = process.env.NEXT_SVC_URL;
 let delayValue = process.env.DELAY_VALUE || 6000;
 let currentPodName = process.env.POD_NAME;
-let version = 'v5';
+let version = 'v0.6';
 
 async function wait(ms) {
   return new Promise(resolve => {
@@ -37,15 +37,16 @@ fastify.get('/chain', async (request, reply) => {
   if (delay) {
     await wait(delayValue);
   }
+  const pod = { pod: `${currentPodName}`, version };
   if (nextService) {
     try {
       const chain = await httpClient.get(`http://${nextService}/chain`, request.headers);
-      return { from : `Pod: ${currentPodName}`, chain , version }
+      return { from : pod, chain }
     } catch (e) {
-      return { from: `Pod: ${currentPodName}`, error: { service: nextService, status_code: e.status } }
+      return { from: pod, error: { service: nextService, status_code: e.status } }
     }
   }
-  return { chain_end : `Pod: ${currentPodName}` }
+  return { chain_end : pod }
 })
 
 fastify.post('/changeCaos', async (request, reply) => {

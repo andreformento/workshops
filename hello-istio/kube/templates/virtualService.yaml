@@ -6,16 +6,38 @@ metadata:
     {{- include "hello-istio.labels" . | nindent 4 }}
 spec:
   hosts:
+  {{- if .Values.enableGateway }}
     {{- toYaml .Values.networking.hosts | nindent 4 }}
+  {{- else }}
+    - {{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  {{- end }}
   gateways:
-    # - {{ .Chart.Name }}-gateway
+    {{- if .Values.enableGateway }}
+    - {{ .Chart.Name }}-gateway
+    {{- end }}
     - mesh
   http:
   - route:
+  {{- if .Values.greenAppVersion }}
     - destination:
-        host: "{{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local"
+        host: {{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+        subset: blue
         port:
           number: 80
+      weight: {{ sub 100 .Values.greenPercentage }}
+    - destination:
+        host: {{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+        subset: green
+        port:
+          number: 80
+      weight: {{ .Values.greenPercentage }}
+  {{- else }}
+    - destination:
+        host: {{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+        port:
+          number: 80
+  {{- end }}
+{{- if .Values.enablePathOverride }}
   # - match:
   #   - uri:
   #       prefix: "/"
@@ -26,3 +48,4 @@ spec:
   #       host: "{{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local"
   #       port:
   #         number: 80
+  {{- end }}

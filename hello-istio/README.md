@@ -39,16 +39,7 @@ No Linux baixe e instale o `microk8s` (https://microk8s.io) e adapte as instruç
 
 ### Se familiarizando com o worflow de trabalho desse exemplo:
 
-Faça a criação do yaml que iremos submeter:
-
-```sh
-./utils.sh yaml
-```
-
-Repare no arquivo `controversial-helm-usage.yaml` (yeah... I know...)
-Para linkar o Gateway criado com o VirtualService do último service descomente a linha `- hello-istio-gateway` do ÚLTIMO VirtualService (final do arquivo)
-
-Instale o yaml no namespace que criamos:
+Criação/alteração das aplicações no cluster via helm
 
 ```sh
 ./utils.sh install
@@ -76,4 +67,16 @@ Em outra aba, veja os tracings no Jaeger
 
 ```sh
 ./utils.sh jaeger
+```
+
+Vamos agora testar o Canary subindo em uma das aplicações (primeiro argumento: 3) uma versão para a Green (segundo argumento: 0.2) com um certo percentual de tráfego (terceiro argumento: 0)
+
+```sh
+./utils.sh enableGreen 3 0.2 0
+```
+
+Agora que a Green está preparada vamos aumentar o percentual dela para 80%:
+
+```sh
+./utils.sh enableGreen 3 0.2 80
 ```

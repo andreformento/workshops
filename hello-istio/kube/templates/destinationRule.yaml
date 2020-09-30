@@ -6,16 +6,27 @@ metadata:
     {{- include "hello-istio.labels" . | nindent 4 }}
 spec:
   host: {{ include "hello-istio.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
-  # trafficPolicy:
-  #   connectionPool:
-  #     tcp:
-  #       maxConnections: {{ .Values.networking.http.maxConnections }}
-  #       connectTimeout: {{ .Values.networking.http.connectTimeout }}
-  #       tcpKeepalive:
-  #         probes: 9
-  #         time: 7200s
-  #         interval: 75s
-      # http:
-      #   http1MaxPendingRequests: {{ .Values.networking.http.http1MaxPendingRequests }}
-      #   maxRequestsPerConnection: {{ .Values.networking.http.maxRequestsPerConnection }}
-      #   idleTimeout: {{ .Values.networking.http.idleTimeout }}
+{{- if .Values.greenAppVersion }}
+  subsets:
+    - name: blue
+      labels:
+        appBucket: blue
+    - name: green
+      labels:
+        appBucket: green
+{{- end }}
+{{- if .Values.enableCircuitBreaker }}
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: {{ .Values.networking.http.maxConnections }}
+        connectTimeout: {{ .Values.networking.http.connectTimeout }}
+        tcpKeepalive:
+          probes: 9
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: {{ .Values.networking.http.http1MaxPendingRequests }}
+        maxRequestsPerConnection: {{ .Values.networking.http.maxRequestsPerConnection }}
+        idleTimeout: {{ .Values.networking.http.idleTimeout }}
+{{- end }}
