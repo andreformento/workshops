@@ -3,24 +3,24 @@
 total_number_services=5
 
 function install() {
-    rm -rf helm-generated.yaml
-    touch helm-generated.yaml
+    # rm -rf helm-generated.yaml
+    # touch helm-generated.yaml
 
     cd kube
 
     for ((i=1;i<=$total_number_services;i++)) do
     if (($i == 1)); then
         # helm -n istio-dev template hello-istio${i} . -f values-dev.yaml --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} >> ../helm-generated.yaml
-        helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --install --atomic
+        helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableCircuitBreaker=true --install --atomic
     else
         service_number=$((${i}-1))
         # helm -n istio-dev upgrade hello-istio${i} ${PWD}/helm --set nextService=hello-istio${service_number} -f values-dev.yaml --install
         if (($i == $total_number_services)); then
             # helm -n istio-dev template hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableGateway=true >> ../helm-generated.yaml
-            helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableGateway=true  --install --atomic
+            helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableGateway=true --set enableCircuitBreaker=true  --install --atomic
         else
             # helm -n istio-dev template hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} >> ../helm-generated.yaml
-            helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i}  --install --atomic
+            helm -n istio-dev upgrade hello-istio${i} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${i} --set fullnameOverride=hello-istio${i} --set enableCircuitBreaker=true  --install --atomic
         fi
     fi
     done
@@ -56,7 +56,15 @@ function enableGreen() {
     green_percentage=${3}
     service_number=$((${chosen_app}-1))
     helm -n istio-dev upgrade hello-istio${chosen_app} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${chosen_app} --set fullnameOverride=hello-istio${chosen_app} --set greenAppVersion=${green_version} --set greenPercentage=${green_percentage}  --install --atomic
-    # helm -n istio-dev template hello-istio${chosen_app} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${chosen_app} --set fullnameOverride=hello-istio${chosen_app} --set greenAppVersion=${green_version} --set greenPercentage=${green_percentage} --debug >> ../bla.yaml 
+    # helm -n istio-dev template hello-istio${chosen_app} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${chosen_app} --set fullnameOverride=hello-istio${chosen_app} --set greenAppVersion=${green_version} --set greenPercentage=${green_percentage} --debug >> ../helm-generated.yaml
+}
+
+function enableCircuitBreaker() {
+    cd kube
+
+    chosen_app=${1}
+    service_number=$((${chosen_app}-1))
+    helm -n istio-dev upgrade hello-istio${chosen_app} . -f values-dev.yaml --set nextService=hello-istio${service_number} --set nameOverride=hello-istio${chosen_app} --set fullnameOverride=hello-istio${chosen_app} --set enableCircuitBreaker=true  --install --atomic
 }
 
 function portForwardSVC() {
@@ -89,6 +97,9 @@ case "$1" in
     "enableGreen")
         enableGreen $2 $3 $4
         ;;
+    "enableCircuitBreaker")
+        enableGreen $2
+        ;;
     "pfIngress")
 		portForwardIngress
 		;;
@@ -111,7 +122,7 @@ case "$1" in
 		callIngressChainBulk
 		;;
 	*)
-		error "Usage: $0 clean|install|pf|pfIngress|call|callDelay|callChain|callChainBulk|enableGreen|kiali|jaeger"
+		error "Usage: $0 clean|install|pf|pfIngress|call|callDelay|callChain|callChainBulk|enableGreen|enableCircuitBreaker|kiali|jaeger"
 		exit 1
 		;;
 esac

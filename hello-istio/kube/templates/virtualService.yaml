@@ -37,6 +37,9 @@ spec:
         port:
           number: 80
   {{- end }}
+{{- if .Values.enableCircuitBreaker }}
+    timeout: 0.5s
+{{- end }}
 {{- if .Values.enablePathOverride }}
   # - match:
   #   - uri:

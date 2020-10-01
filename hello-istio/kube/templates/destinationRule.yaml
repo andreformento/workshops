@@ -29,4 +29,9 @@ spec:
         http1MaxPendingRequests: {{ .Values.networking.http.http1MaxPendingRequests }}
         maxRequestsPerConnection: {{ .Values.networking.http.maxRequestsPerConnection }}
         idleTimeout: {{ .Values.networking.http.idleTimeout }}
+    outlierDetection:
+      baseEjectionTime: 5s #20s
+      consecutiveErrors: 3
+      interval: 3s #10s
+      maxEjectionPercent: 100
 {{- end }}
